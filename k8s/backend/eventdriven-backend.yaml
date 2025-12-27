@@ -20,7 +20,7 @@ spec:
         - name: gitlab-registry-key
       containers:
         - name: event-driven-backend
-          image: registry.gitlab.com/oussama-el-amrani/even-driven-architecture:c769baf8
+          image: registry.gitlab.com/oussama-el-amrani/even-driven-architecture:95ad96dd
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
