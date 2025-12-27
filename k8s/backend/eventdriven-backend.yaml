@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-driven-backend
+  labels:
+    app: event-driven-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: event-driven-backend
+  template:
+    metadata:
+      name: event-driven-backend
+      labels:
+        app: event-driven-backend
+    spec:
+      containers:
+        - name: event-driven-backend
+          image: registry.gitlab.com/oussama-el-amrani/event-driven-architecture:3fbdda34
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+      restartPolicy: Always
