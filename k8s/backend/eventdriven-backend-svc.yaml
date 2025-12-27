@@ -1,13 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: 
+  name: backend-svc
+  namespace: event-driven
 spec:
   selector:
-    app: 
+    app: event-driven-backend
   ports:
     - protocol: TCP
-      port: 80
+      port: 8080
       targetPort: 8080
+      nodePort: 30007
   type: NodePort
-  
+

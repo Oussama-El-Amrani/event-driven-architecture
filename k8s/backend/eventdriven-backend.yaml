@@ -1,7 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: event-driven-backend
+  name: backend
+  namespace: event-driven
   labels:
     app: event-driven-backend
 spec:
@@ -15,11 +16,19 @@ spec:
       labels:
         app: event-driven-backend
     spec:
+      imagePullSecrets:
+        - name: gitlab-registry-key
       containers:
         - name: event-driven-backend
-          image: registry.gitlab.com/oussama-el-amrani/event-driven-architecture:3fbdda34
+          image: registry.gitlab.com/oussama-el-amrani/even-driven-architecture:c769baf8
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               protocol: TCP
+          env:
+            - name: KAFKA_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: KAFKA_URL
+                  name: backend-cm
       restartPolicy: Always
