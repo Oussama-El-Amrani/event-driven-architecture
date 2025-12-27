@@ -48,18 +48,22 @@ public class PageEventController {
         return Flux.interval(Duration.ofSeconds(1))
                 .map(sequence -> {
                     Map<String, Long> stringLongMap = new HashMap<>();
-                    ReadOnlyWindowStore<String, Long> windowStore =
-                            interactiveQueryService.getQueryableStore(
-                                    "count-store",
-                                    QueryableStoreTypes.windowStore()
-                            );
-                    Instant now = Instant.now();
-                    Instant from = now.minusMillis(5000);
-                    KeyValueIterator<Windowed<String>, Long> fetchAll = windowStore.fetchAll(from, now);
+                    try {
+                        ReadOnlyWindowStore<String, Long> windowStore =
+                                interactiveQueryService.getQueryableStore(
+                                        "count-store",
+                                        QueryableStoreTypes.windowStore()
+                                );
+                        Instant now = Instant.now();
+                        Instant from = now.minusMillis(5000);
+                        KeyValueIterator<Windowed<String>, Long> fetchAll = windowStore.fetchAll(from, now);
 
-                    while (fetchAll.hasNext()) {
-                        KeyValue<Windowed<String>, Long> next = fetchAll.next();
-                        stringLongMap.put(next.key.key(), next.value);
+                        while (fetchAll.hasNext()) {
+                            KeyValue<Windowed<String>, Long> next = fetchAll.next();
+                            stringLongMap.put(next.key.key(), next.value);
+                        }
+                    } catch (Exception e) {
+                         System.out.println("Store not queryable yet: " + e.getMessage());
                     }
 
                     return stringLongMap;
