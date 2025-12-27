@@ -1,0 +1,5 @@
+yamlApplicationConfig:
+  kafka:
+    clusters:
+      - name: mycluster
+        bootstrapServers: my-cluster-kafka-bootstrap:9092
