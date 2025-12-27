@@ -1,93 +1,177 @@
-# Even Driven Architecture
+# Event Driven Architecture
 
+This project demonstrates an Event-Driven Architecture using Spring Cloud Stream, Kafka Streams, and Spring Boot. It includes a real-time analytics pipeline that processes page view events.
 
+## Architecture
 
-## Getting started
+The following diagram illustrates the data flow and component interactions within the application.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+```mermaid
+graph TD
+    subgraph Clients
+        User((User))
+        Browser((Browser))
+    end
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+    subgraph "Spring Boot Application"
+        direction TB
+        
+        subgraph "Controllers"
+            PEC[PageEventController]
+        end
 
-## Add your files
+        subgraph "Handlers (Kafka Streams)"
+            Supplier[PageEvent Supplier]
+            Consumer[PageEvent Consumer]
+            Processor[kStreamFunction]
+        end
 
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+        subgraph "State Store"
+            CountStore[(count-store)]
+        end
+    end
 
+    subgraph "Kafka Cluster (Redpanda/Strimzi)"
+        T2[Topic: T2]
+        T3[Topic: T3]
+        T4[Topic: T4]
+    end
+
+    %% Flows
+    User -- "GET /publish" --> PEC
+    PEC -- "StreamBridge" --> T2
+    T2 --> Consumer
+    
+    Supplier -- "Polls (1s)" --> T3
+    
+    T3 --> Processor
+    Processor -- "Filter/Map/Group/Window" --> CountStore
+    Processor --> T4
+    
+    Browser -- "GET /analytics (SSE)" --> PEC
+    PEC -- "InteractiveQueryService" --> CountStore
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/Oussama-El-Amrani/even-driven-architecture.git
-git branch -M main
-git push -uf origin main
+
+## Components
+
+### 1. PageEvent
+The core data model representing a page view event.
+- **Fields**: `name`, `userName`, `date`, `duration`.
+
+### 2. PageEventController
+REST Controller handling external interactions.
+- **Publishing** (`/publish`): Accepts parameters (`name`, `topic`) to create a `PageEvent` and sends it to the specified topic (defaulting to `T2` configuration) using `StreamBridge`.
+- **Analytics** (`/analytics`): Exposes a Server-Sent Events (SSE) endpoint. It uses `InteractiveQueryService` to query the local `count-store` (WindowStore) and streams real-time page visit counts grouped by page name over the last 5 seconds.
+
+### 3. PageEventHandler
+Contains the Spring Cloud Stream functional bean definitions.
+- **pageEventConsumer**: Subscribes to topic `T2` and logs received events.
+- **pageEventSupplier**: Periodically generates random `PageEvent` objects and sends them to topic `T3`.
+- **kStreamFunction**: A Kafka Stream processor that:
+    1.  Consumes from topic `T3`.
+    2.  Filters events with duration > 100.
+    3.  Groups by page name.
+    4.  Applies a Time Window (5000ms).
+    5.  Counts occurrences and materializes the result into a State Store named `count-store`.
+    6.  Forwards the stream to topic `T4`.
+
+## Interaction Flow
+
+1.  **Event Generation**: 
+    -   The `pageEventSupplier` automatically generates events to `T3`.
+    -   Users can manually trigger events via the `/publish` endpoint, sending them to `T2`.
+2.  **Processing**:
+    -   Events on `T3` are consumed by `kStreamFunction`.
+    -   The function processes the stream and updates the local state store `count-store` with windowed counts.
+3.  **Consumption**:
+    -   The `pageEventConsumer` simply logs events from `T2`.
+4.  **Visualization**:
+    -   A client connects to `/analytics`.
+    -   The controller queries the `count-store` every second and pushes the current windowed counts to the client.
+
+Strimzi Kafka Architecture
+
+The project is designed to run on Kubernetes with a Kafka cluster managed by [Strimzi](https://strimzi.io/).
+
+### Configuration Overview
+The Kubernetes configuration (`k8s/kafka/kafka-single-node.yaml`) defines a simplified, single-node Kafka cluster suitable for development and testing.
+
+- **Mode**: KRaft (Kafka Raft Metadata mode). This deployment does **not** use Zookeeper. Kafka manages its own metadata.
+- **KafkaNodePool (`dual-role`)**:
+    -   Defines a node pool where the node acts as both a **Controller** (managing the cluster) and a **Broker** (storing data).
+    -   **Replicas**: 1.
+    -   **Storage**: 100Gi Persistent Volume (JBOD).
+- **Kafka Cluster (`my-cluster`)**:
+    -   **Version**: 4.1.1.
+    -   **Listeners**:
+        -   `plain` (port 9092): Internal, no TLS.
+        -   `tls` (port 9093): Internal, with TLS.
+    -   **Entity Operator**: Enabled to manage `KafkaTopic` and `KafkaUser` resources via Kubernetes CRDs.
+    -   **Replication Config**: configured for a single node (offsets, transaction logs, and default replication factors are all set to 1).
+
+### Deployment
+To deploy this cluster (assuming Strimzi Operator is installed):
+```bash
+kubectl apply -f k8s/kafka/kafka-single-node.yaml
 ```
 
-## Integrate with your tools
+## Containerization & CI/CD
 
-* [Set up project integrations](https://gitlab.com/Oussama-El-Amrani/even-driven-architecture/-/settings/integrations)
+This project uses [Google Jib](https://github.com/GoogleContainerTools/jib) to containerize the Spring Boot application. Jib builds optimized Docker and OCI images for your Java applications without a Docker daemon - and without mastering deep mastery of Docker best-practices.
 
-## Collaborate with your team
+### Jib Configuration
+The `jib-maven-plugin` is configured in `pom.xml`. It builds the image and pushes it directly to the configured registry.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+### GitLab CI/CD Pipeline
+The project includes a `.gitlab-ci.yml` pipeline that automates the build and push process.
 
-## Test and Deploy
+- **Docker-less Build**: Since Jib does not require a Docker daemon, we can use a standard Maven image (`maven:3.9.6-eclipse-temurin-17`) in our CI runner. This eliminates the need for "Docker-in-Docker" (dind), improving security and performance.
+- **Pipeline Job**: The `build-and-push` job runs:
+  ```bash
+  mvn compile com.google.cloud.tools:jib-maven-plugin:build \
+      -Dimage=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA \
+      -Djib.to.auth.username=$CI_REGISTRY_USER \
+      -Djib.to.auth.password=$CI_REGISTRY_PASSWORD
+  ```
 
-Use the built-in continuous integration in GitLab.
+## Kubernetes Application Deployment
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+The application backend is containerized and ready for Kubernetes deployment. The manifests are located in `k8s/backend/`.
 
-***
+### Prerequisites
+1.  **Namespace**: Create the namespace `event-driven`.
+    ```bash
+    kubectl create namespace event-driven
+    ```
+2.  **Secrets**: Ensure you have a `gitlab-registry-key` secret in the `event-driven` namespace if pulling from a private registry (as referenced in `eventdriven-backend.yaml`).
 
-# Editing this README
+### Deployment Steps
+Apply the ConfigMap, Service, and Deployment manifests:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```bash
+kubectl apply -f k8s/backend/
+```
 
-## Suggestions for a good README
+This will create:
+-   **ConfigMap** (`backend-cm`): Stores configuration like `KAFKA_URL`.
+-   **Deployment** (`backend`): Deploys 3 replicas of the Spring Boot application.
+-   **Service** (`event-driven-backend`): Exposes the application (ClusterIP).
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+## Kafka UI
 
-## Name
-Choose a self-explaining name for your project.
+To visualize topics, messages, and consumer groups, we recommend using [Kafka UI](https://github.com/provectus/kafka-ui).
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Installation (Helm)
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+1.  Add the Helm repository:
+    ```bash
+    helm repo add kafka-ui https://ui.charts.kafbat.io/
+    ```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+2.  Install Kafka UI:
+    ```bash
+    helm install my-kafka-ui kafka-ui/kafka-ui --version 1.5.3 \
+      --set envs.config.KAFKA_CLUSTERS_0_NAME=my-cluster \
+      --set envs.config.KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=my-cluster-kafka-bootstrap:9092
+    ```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
