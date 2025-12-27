@@ -7,7 +7,7 @@ build-and-push:
   script:
     - mvn compile com.google.cloud.tools:jib-maven-plugin:build
       -Dimage=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-      -Djib.to.auth.username$CI_REGISTRY_USER
+      -Djib.to.auth.username=$CI_REGISTRY_USER
       -Djib.to.auth.password=$CI_REGISTRY_PASSWORD
   only:
     - main
