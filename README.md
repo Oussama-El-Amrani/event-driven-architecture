@@ -1,3 +1,4 @@
+
 # Event Driven Architecture
 
 This project demonstrates an Event-Driven Architecture using Spring Cloud Stream, Kafka Streams, and Spring Boot. It includes a real-time analytics pipeline that processes page view events.
@@ -100,7 +101,6 @@ The project is designed to run on Kubernetes with a Kafka cluster managed by [St
 
 ### Configuration Overview
 The Kubernetes configuration (`k8s/kafka/kafka-single-node.yaml`) defines a simplified, single-node Kafka cluster suitable for development and testing.
-
 - **Mode**: KRaft (Kafka Raft Metadata mode). This deployment does **not** use Zookeeper. Kafka manages its own metadata.
 - **KafkaNodePool (`dual-role`)**:
     -   Defines a node pool where the node acts as both a **Controller** (managing the cluster) and a **Broker** (storing data).
@@ -123,10 +123,8 @@ kubectl apply -f k8s/kafka/kafka-single-node.yaml
 ## Containerization & CI/CD
 
 This project uses [Google Jib](https://github.com/GoogleContainerTools/jib) to containerize the Spring Boot application. Jib builds optimized Docker and OCI images for your Java applications without a Docker daemon - and without mastering deep mastery of Docker best-practices.
-
 ### Jib Configuration
 The `jib-maven-plugin` is configured in `pom.xml`. It builds the image and pushes it directly to the configured registry.
-
 ### GitLab CI/CD Pipeline
 The project includes a `.gitlab-ci.yml` pipeline that automates the build and push process.
 
@@ -152,11 +150,9 @@ The application backend is containerized and ready for Kubernetes deployment. Th
 
 ### Deployment Steps
 Apply the ConfigMap, Service, and Deployment manifests:
-
 ```bash
 kubectl apply -f k8s/backend/
 ```
-
 This will create:
 -   **ConfigMap** (`backend-cm`): Stores configuration like `KAFKA_URL`.
 -   **Deployment** (`backend`): Deploys 3 replicas of the Spring Boot application.
@@ -167,14 +163,12 @@ This will create:
 To visualize topics, messages, and consumer groups, we recommend using [Kafka UI](https://github.com/provectus/kafka-ui).
 
 ### Installation (Helm)
-
 1.  Add the Helm repository:
     ```bash
     helm repo add kafka-ui https://ui.charts.kafbat.io/
     ```
-
 2.  Install Kafka UI:
     ```bash
     helm install my-kafka-ui kafka-ui/kafka-ui --version 1.5.3 \
-    --values ./k8s/kafka/kafka-ui.values.yaml
+      --values ./k8s/kafka/kafka-ui.values.yaml
     ```
