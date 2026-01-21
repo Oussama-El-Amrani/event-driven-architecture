@@ -1,0 +1,13 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: event-driven-listner
+spec:
+  serviceAccountName: pipeline
+  triggers:
+    - name: github-push-trigger
+      bindings:
+        - ref: github-push
+          kind: ClusterTriggerBinding
+      template:
+        ref: event-driven-template
