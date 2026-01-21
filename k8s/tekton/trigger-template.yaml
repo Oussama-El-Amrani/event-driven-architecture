@@ -14,7 +14,7 @@ spec:
       metadata:
         generateName: event-driven-pipeline
       spec:
-        pipelineref:
+        pipelineRef:
           name: event-driven-pipeline
         serviceAccountName: pipeline
         params:
@@ -24,4 +24,5 @@ spec:
             value: $(tt.params.git-revision)
         workspaces:
           - name: shared-workspace
-            persistentVolumeClaim: event-driven-pvc
+            persistentVolumeClaim:
+              claimName: event-driven-pvc
