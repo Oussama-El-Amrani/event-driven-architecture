@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: evennt-driven-run-
+spec:
+  pipelineRef:
+    name: event-driven-pipeline
+  serviceAccountName: pipeline
+  workspaces:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: event-driven-pvc

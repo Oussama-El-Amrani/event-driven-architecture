@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: event-driven-pipeline
+spec:
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: "https://github.com/Oussama-El-Amrani/event-driven-architecture"
+        - name: revision
+          value: "main"
+    - name: build-push
+      runAfter:
+        - fetch-repository
+      taskRef:
+        name: maven-jib-task
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/event-app:latest"

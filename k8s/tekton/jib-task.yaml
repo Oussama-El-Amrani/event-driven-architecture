@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: maven-jib-task
+spec:
+  workspaces:
+    - name: source
+  params:
+    - name: IMAGE
+      description: "The name of the image to build"
+  steps:
+    - name: build-and-push
+      image: maven:3.9.6-eclipse-temurin-17
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+
+        mvn compile com.google.cloud.tools:jib-maven-plugin:build \
+          -Dimage=$(params.IMAGE) \
+          -Djib.to.auth.username=unused \
+          -Djib.to.auth.password=$TOKEN \
+          -Djib.allowInsecureRegistries=true
