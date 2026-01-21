@@ -13,12 +13,15 @@ spec:
       kind: PipelineRun
       metadata:
         generateName: event-driven-pipeline
-      serviceAccountName: pipeline
-      params:
-        - name: url
-          value: $(tt.params.git-repo-url)
-        - name: revision
-          value: $(tt.params.git-revision)
-      workspaces:
-        - name: shared-workspace
-          persistentVolumeClaim: event-driven-pvc
+      spec:
+        pipelineref:
+          name: event-driven-pipeline
+        serviceAccountName: pipeline
+        params:
+          - name: url
+            value: $(tt.params.git-repo-url)
+          - name: revision
+            value: $(tt.params.git-revision)
+        workspaces:
+          - name: shared-workspace
+            persistentVolumeClaim: event-driven-pvc
