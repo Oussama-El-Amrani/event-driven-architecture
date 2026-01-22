@@ -2,6 +2,7 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: event-driven-pipeline
+  namespace: event-driven
 spec:
   workspaces:
     - name: shared-workspace

@@ -2,6 +2,7 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
   name: event-driven-template
+  namespace: event-driven
 spec:
   params:
     - name: git-revision
