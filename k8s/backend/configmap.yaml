@@ -4,5 +4,4 @@ metadata:
   name: backend-cm
   namespace: event-driven
 data:
-  KAFKA_URL: my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
-
+  KAFKA_URL: my-cluster-kafka-bootstrap.event-driven.svc.cluster.local:9092
