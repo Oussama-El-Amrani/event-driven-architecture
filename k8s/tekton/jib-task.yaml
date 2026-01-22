@@ -2,6 +2,7 @@ apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: maven-jib-task
+  namespace: event-driven
 spec:
   workspaces:
     - name: source

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: event-driven
+  annotations:
+    openshift.io/display-name: "Event Driven Architecture Project"
+    openshift.io/description: "A cloud-native real-time analytics pipeline building with Spring Cloud"

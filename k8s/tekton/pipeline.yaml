@@ -9,12 +9,19 @@ spec:
   tasks:
     - name: fetch-repository
       taskRef:
-        name: git-clone
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: namespace
+            value: openshift-pipelines
       workspaces:
         - name: output
           workspace: shared-workspace
       params:
-        - name: url
+        - name: URL
           value: "https://github.com/Oussama-El-Amrani/event-driven-architecture"
         - name: revision
           value: "main"

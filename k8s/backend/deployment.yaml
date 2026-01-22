@@ -16,11 +16,9 @@ spec:
       labels:
         app: event-driven-backend
     spec:
-      imagePullSecrets:
-        - name: gitlab-registry-key
       containers:
-        - name: event-driven-backend
-          image: registry.gitlab.com/oussama-el-amrani/even-driven-architecture:3f44b281
+        - name: event-app
+          image: event-app:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

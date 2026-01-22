@@ -1,0 +1,8 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: event-app
+  namespace: event-driven
+spec:
+  lookupPolicy:
+    local: true
